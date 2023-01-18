@@ -44,7 +44,12 @@ class Marquee extends StatelessWidget {
   /// See also:
   ///
   /// * [style] to style the text.
-  final String text;
+  final String? text;
+
+  /// The text span to be displayed.
+  ///
+  /// Text should be styled inside that span
+  final TextSpan? textSpan;
 
   /// The style of the text to be displayed.
   ///
@@ -248,7 +253,6 @@ class Marquee extends StatelessWidget {
   final Curve curve;
 
   const Marquee({
-    Key? key,
     required this.text,
     this.style,
     this.velocity = 100,
@@ -263,11 +267,31 @@ class Marquee extends StatelessWidget {
     this.fadingEdgeStartFraction = 0,
     this.fadingEdgeEndFraction = 0,
     this.curve = Curves.linear,
-  }) : super(key: key);
+    super.key,
+  }) : textSpan = null;
+
+  const Marquee.rich({
+    required this.textSpan,
+    this.velocity = 100,
+    this.blankSpace = 0,
+    this.startPadding = 0,
+    this.reverse = false,
+    this.bounce = false,
+    this.startAfter = Duration.zero,
+    this.pauseAfterRound = Duration.zero,
+    this.numberOfRounds,
+    this.showFadingOnlyWhenScrolling = true,
+    this.fadingEdgeStartFraction = 0,
+    this.fadingEdgeEndFraction = 0,
+    this.curve = Curves.linear,
+    super.key,
+  }) : text = null,
+    style = null;
 
   @override
   Widget build(BuildContext context) => _StyledMarquee(
         text: text,
+        textSpan: textSpan,
         style: style ?? DefaultTextStyle.of(context).style,
         velocity: velocity,
         blankSpace: blankSpace,
@@ -286,7 +310,10 @@ class Marquee extends StatelessWidget {
 
 class _StyledMarquee extends StatefulWidget {
   /// Equivalent to [Marquee.text].
-  final String text;
+  final String? text;
+
+  /// Equivalent to [Marquee.textSpan].
+  final TextSpan? textSpan;
 
   /// Equivalent to [Marquee.style].
   final TextStyle style;
@@ -327,8 +354,8 @@ class _StyledMarquee extends StatefulWidget {
   final Gradient? _fadeGradient;
 
   _StyledMarquee({
-    Key? key,
     required this.text,
+    required this.textSpan,
     required this.style,
     required this.velocity,
     required this.blankSpace,
@@ -342,7 +369,9 @@ class _StyledMarquee extends StatefulWidget {
     required double fadingEdgeStartFraction,
     required double fadingEdgeEndFraction,
     required this.curve,
-  })   : assert(!blankSpace.isNaN),
+    super.key,
+  })   : assert(text != null || textSpan != null, 'text or textSpan are required'),
+        assert(!blankSpace.isNaN),
         assert(blankSpace >= 0, 'The blankSpace needs to be positive or zero.'),
         assert(blankSpace.isFinite),
         assert(!velocity.isNaN),
@@ -362,8 +391,7 @@ class _StyledMarquee extends StatefulWidget {
             'The startPadding must be less than or equal to the blankSpace.'),
         assert(numberOfRounds == null || numberOfRounds > 0),
         _fadeGradient =
-            _buildFadeGradient(fadingEdgeStartFraction, fadingEdgeEndFraction),
-        super(key: key);
+            _buildFadeGradient(fadingEdgeStartFraction, fadingEdgeEndFraction);
 
   @override
   _StyledMarqueeState createState() => _StyledMarqueeState();
@@ -397,16 +425,25 @@ class _StyledMarqueeState extends State<_StyledMarquee>
 
   bool _roundsComplete = false;
 
-  TextPainter _buildTextPainter() => TextPainter(
+  TextPainter _buildTextPainter() {
+    if(widget.text != null) {
+      return TextPainter(
         textDirection: TextDirection.ltr,
         text: TextSpan(
           text: widget.text,
           style: widget.style,
         ),
       )..layout();
+    } else {
+      return TextPainter(
+        textDirection: TextDirection.ltr,
+        text: widget.textSpan,
+      )..layout();
+    }
+  }
 
   bool _needsNewTextPainter(_StyledMarquee oldWidget) =>
-      oldWidget.text != widget.text || oldWidget.style != widget.style;
+      oldWidget.text != widget.text || oldWidget.textSpan != widget.textSpan || oldWidget.style != widget.style;
 
   Duration _getDuration() => _MarqueePainter.calculateDurationFromVelocity(
       widget.velocity, _textSize.width, widget.blankSpace);
